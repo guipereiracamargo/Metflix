@@ -1,0 +1,1286 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141414"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Metflix"><meta name="mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><style>html{padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px);background:#141414}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>Metflix</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: phone-first streaming home. Billboard hero with tonight's pick, filter pills, one horizontal
+   poster row per person (first card is "adicionar"), watched history last. The draw button lives in a
+   fixed bottom dock within thumb reach; tapping a poster opens a bottom sheet with its actions.
+   Single committed look: near-black ground, one red, white type. */
+:root {
+  color-scheme: dark;
+  --bg: #141414;
+  --surface: #1F1F1F;
+  --ink: #FFFFFF;
+  --muted: #B3B3B3;
+  --line: #3A3A3A;
+  --red: #E50914;
+  --red-hover: #F6121D;
+  --gray-btn: rgba(109, 109, 110, 0.7);
+  --danger: #FF8A80;
+  --focus: #FFFFFF;
+  --font-display: "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  padding-block: 14px 120px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 1180px; margin-inline: auto; display: grid; gap: 20px; }
+.wrap > * { min-width: 0; }
+button, input, select { font: inherit; color: inherit; touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.contents { display: contents; }
+
+.nav { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 16px; }
+.brand {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0;
+  line-height: 1;
+}
+.nav p { margin: 0; color: var(--muted); font-size: 14px; }
+
+.banner { background: var(--surface); border: 1px solid var(--line); padding: 12px 14px; border-radius: 6px; color: var(--muted); }
+
+/* ---- Hero ---- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  min-height: 240px;
+  padding: 36px 20px 24px;
+  display: grid;
+  align-content: end;
+  gap: 12px;
+  scroll-margin-top: 8px;
+  background:
+    radial-gradient(90% 130% at 88% -10%, rgba(229, 9, 20, 0.5), transparent 60%),
+    linear-gradient(100deg, #000000 0%, #1B1B1B 100%);
+}
+.hero > * { position: relative; z-index: 1; }
+.hero > .hero-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center 20%; }
+.hero > .hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.25) 100%), linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.85) 100%); }
+.label { font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.label b { color: var(--red); font-weight: 600; }
+.t-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(3rem, 12vw, 6.5rem);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
+  max-width: 16ch;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+.t-title.is-empty { color: #7A7A7A; }
+.t-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: var(--muted); font-size: 15px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
+.hero-actions button { flex: 1 1 160px; }
+.btn-white, .btn-gray {
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 22px;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-white { background: #FFFFFF; color: #000000; }
+.btn-white:hover:not([disabled]) { background: rgba(255, 255, 255, 0.8); }
+.btn-gray { background: var(--gray-btn); color: #FFFFFF; }
+.btn-gray:hover:not([disabled]) { background: rgba(109, 109, 110, 0.45); }
+.btn-gray.danger { color: var(--danger); }
+button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Filters ---- */
+.filters { display: grid; gap: 14px; }
+.field-label { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 8px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg-btn, .seg-label span {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid #4D4D4D;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  cursor: pointer;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.seg-btn[aria-pressed="true"], .seg-label input:checked + span { background: #FFFFFF; color: #000000; border-color: #FFFFFF; }
+.seg-label { display: block; }
+.seg-label input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg-label input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tap-hint { margin: 0; color: var(--muted); font-size: 14px; }
+.status { min-height: 1.4em; margin: -8px 0 0; color: var(--muted); }
+
+/* ---- Bottom dock ---- */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  pointer-events: none;
+  padding-top: 30px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+}
+.dock-in { max-width: 1180px; margin-inline: auto; display: flex; align-items: center; gap: 14px; pointer-events: auto; }
+.btn-draw {
+  flex: 1;
+  min-height: 54px;
+  background: var(--red);
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 20px 6px;
+  cursor: pointer;
+}
+.btn-draw:hover:not([disabled]) { background: var(--red-hover); }
+.count { flex: none; font-size: 14px; color: var(--muted); margin: 0; text-align: right; max-width: 6.5em; line-height: 1.25; }
+
+/* ---- Rows ---- */
+.rowsec { display: grid; gap: 10px; }
+.row-head { display: flex; align-items: center; gap: 10px; }
+.row-head h2 { font-size: 1.3rem; font-weight: 600; margin: 0; }
+.row-head .n { color: var(--muted); font-size: 14px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.row-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 4px 14px 2px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+.card {
+  position: relative;
+  flex: none;
+  width: clamp(132px, 38vw, 172px);
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-snap-align: start;
+  cursor: pointer;
+  background: linear-gradient(165deg, hsl(var(--h, 0) 55% 30%), hsl(var(--h, 0) 60% 11%));
+}
+.card:active { filter: brightness(1.2); }
+.card.has-cover { background-size: cover; background-position: center; justify-content: space-between; }
+.card.has-cover .card-title { font-size: 1.05rem; line-height: 1; text-shadow: 0 1px 6px #000; }
+.card.has-cover::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.75) 100%); pointer-events: none; }
+.card.has-cover > * { position: relative; z-index: 1; }
+a.big { display: flex; align-items: center; justify-content: center; text-decoration: none; text-align: center; }
+.card.is-pick { outline: 3px solid var(--red); outline-offset: -3px; }
+.card.is-watched { filter: grayscale(0.7); opacity: 0.8; }
+.card-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.card-note { font-size: 12.5px; color: rgba(255, 255, 255, 0.75); overflow-wrap: anywhere; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.add-card {
+  background: var(--surface);
+  border: 2px dashed #5A5A5A;
+  color: var(--muted);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
+}
+.add-card:active { filter: none; border-color: #FFFFFF; color: #FFFFFF; }
+.add-card[disabled] { opacity: 0.5; cursor: not-allowed; }
+.add-card .plus { font-family: var(--font-display); font-size: 3.4rem; line-height: 1; color: var(--red); }
+.empty { flex: 1 1 240px; min-width: 220px; align-self: center; color: var(--muted); padding: 12px; }
+@media (hover: hover) {
+  .card { transition: transform 0.15s ease; }
+  .card:hover { transform: scale(1.04); z-index: 2; }
+  .add-card:hover:not([disabled]) { color: #FFFFFF; border-color: #FFFFFF; transform: none; }
+}
+
+.tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+.tag.first { background: var(--red); border-color: var(--red); color: #FFFFFF; }
+.tag.live { background: #FFFFFF; border-color: #FFFFFF; color: #000000; }
+.tag.rt { letter-spacing: 0.04em; }
+.tag.v-liked { background: #FFFFFF; border-color: #FFFFFF; color: #000000; }
+.tag.v-disliked { border-color: var(--danger); color: var(--danger); background: rgba(0, 0, 0, 0.35); }
+.tag.v-none { border-style: dashed; }
+
+/* ---- Add panel ---- */
+.add { background: var(--surface); border-radius: 6px; padding: 16px; display: grid; gap: 10px; max-width: 560px; }
+.add fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
+.add fieldset[disabled] { opacity: 0.55; }
+.add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.add-row .btn-white, .add-row .btn-gray { flex: 1 1 140px; }
+.input { width: 100%; min-height: 48px; font-size: 16px; background: #333333; border: 1px solid #4D4D4D; border-radius: 6px; padding: 10px 12px; min-width: 0; color: #FFFFFF; }
+.input::placeholder { color: #8C8C8C; }
+.hint { margin: 0; color: var(--muted); font-size: 14px; }
+
+.history summary { cursor: pointer; font-size: 1.3rem; font-weight: 600; padding-block: 8px; }
+.history .count { display: inline; font-weight: 400; max-width: none; }
+
+/* ---- Bottom sheet ---- */
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 20; }
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  max-width: 560px;
+  margin-inline: auto;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 14px 14px 0 0;
+  padding-top: 10px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.grip { width: 40px; height: 4px; border-radius: 2px; background: #555; margin: 2px auto 4px; }
+.sheet h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.sheet-sub { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.sheet-actions { display: grid; gap: 10px; }
+.big { width: 100%; }
+.stars { display: flex; gap: 6px; }
+.star {
+  flex: 1;
+  min-height: 54px;
+  border-radius: 6px;
+  border: 1px solid #4D4D4D;
+  background: transparent;
+  color: #8C8C8C;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.star.zero { flex: 0 0 52px; font-size: 1.1rem; font-weight: 600; }
+.star.on { color: var(--red); border-color: var(--red); }
+.star.zero.on { color: #FFFFFF; border-color: #FFFFFF; background: #3A3A3A; }
+.star[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.stats { display: grid; gap: 14px; padding: 6px 0 12px; }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border-radius: 6px; padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.stat b { font-family: var(--font-display); font-weight: 400; font-size: 2.2rem; line-height: 1; letter-spacing: 0.02em; }
+.stat span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.stat-sub { margin: 0; color: var(--muted); font-size: 13px; }
+.stat-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.stat-list li { display: flex; justify-content: space-between; gap: 12px; background: var(--surface); border-radius: 6px; padding: 10px 14px; }
+.stat-list .st { color: var(--red); white-space: nowrap; }
+.sheet-info { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.sheet-info b { color: #FFFFFF; font-weight: 600; }
+.bulk summary { cursor: pointer; color: var(--muted); font-size: 14px; padding-block: 6px; }
+.bulk textarea { min-height: 110px; font-family: inherit; font-size: 1rem; resize: vertical; }
+.tmdb { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+@media (min-width: 900px) { .hero { padding: 56px 36px 40px; min-height: 300px; } }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header class="nav">
+    <h1 class="brand">Metflix</h1>
+    <p>Filmes a dois: ver pela 1ª vez ou rever.</p>
+  </header>
+
+  <div id="banner" class="banner" role="status" hidden></div>
+
+  <section id="whoBox" class="banner who" hidden>
+    <p style="margin:0 0 10px">Quem está usando esta página?</p>
+    <div class="pills">
+      <button class="seg-btn" type="button" data-who="Guilherme">Guilherme</button>
+      <button class="seg-btn" type="button" data-who="Gabriela">Gabriela</button>
+    </div>
+  </section>
+
+  <section id="hero" class="hero" aria-label="Em cartaz hoje">
+    <div id="heroBg" class="hero-bg" hidden></div>
+    <p class="label"><b>Em cartaz hoje</b> · <span id="tDate"></span></p>
+    <h2 id="tTitle" class="t-title is-empty">Nada em cartaz</h2>
+    <div id="tMeta" class="t-meta"></div>
+    <div class="hero-actions">
+      <button id="btnWatched" class="btn-white" type="button" hidden>Já assistimos</button>
+      <button id="btnClear" class="btn-gray" type="button" hidden>Tirar de cartaz</button>
+    </div>
+  </section>
+
+  <section class="filters" aria-label="Filtros do sorteio">
+    <div>
+      <span class="field-label" id="lblScope">Quem entra no sorteio</span>
+      <div class="pills" role="group" aria-labelledby="lblScope">
+        <button class="seg-btn" type="button" data-key="scope" data-val="all" aria-pressed="true">Os dois</button>
+        <button class="seg-btn" type="button" data-key="scope" data-val="me" aria-pressed="false"><span id="lblMe">Guilherme</span></button>
+        <button class="seg-btn" type="button" data-key="scope" data-val="other" aria-pressed="false"><span id="lblOther">Gabriela</span></button>
+      </div>
+    </div>
+    <div>
+      <span class="field-label" id="lblKind">Tipo de sessão</span>
+      <div class="pills" role="group" aria-labelledby="lblKind">
+        <button class="seg-btn" type="button" data-key="kind" data-val="all" aria-pressed="true">Tudo</button>
+        <button class="seg-btn" type="button" data-key="kind" data-val="first" aria-pressed="false">1ª vez</button>
+        <button class="seg-btn" type="button" data-key="kind" data-val="rewatch" aria-pressed="false">Rever</button>
+      </div>
+    </div>
+  </section>
+  <div id="genreBox" hidden>
+    <span class="field-label" id="lblGenre">Gênero</span>
+    <div id="genrePills" class="pills" role="group" aria-labelledby="lblGenre"></div>
+  </div>
+  <p id="status" class="status" aria-live="polite"></p>
+
+  <section class="rowsec" aria-label="Minha lista">
+    <div class="row-head">
+      <span id="meDot" class="dot"></span>
+      <h2 id="meTitle">Lista do Guilherme</h2>
+      <span id="meCount" class="n"></span>
+    </div>
+    <p class="tap-hint">Toque em um filme para escolher, marcar como visto ou excluir.</p>
+    <p id="formHint" class="hint" hidden></p>
+    <form id="addForm" class="add" autocomplete="off" hidden>
+      <fieldset id="addSet" disabled>
+        <label class="field-label" for="fTitle" style="margin:0">Adicionar filme</label>
+        <input id="fTitle" class="input" type="text" maxlength="120" placeholder="Nome do filme" required enterkeyhint="next">
+        <input id="fNote" class="input" type="text" maxlength="80" placeholder="Onde assistir ou observação (opcional)" enterkeyhint="done">
+        <div class="pills" role="radiogroup" aria-label="Tipo">
+          <label class="seg-label"><input type="radio" name="kind" value="first" checked><span>Ver pela 1ª vez</span></label>
+          <label class="seg-label"><input type="radio" name="kind" value="rewatch"><span>Rever</span></label>
+        </div>
+        <details class="bulk">
+          <summary>Adicionar vários de uma vez</summary>
+          <textarea id="fBulk" class="input" rows="5" placeholder="Um título por linha"></textarea>
+          <div class="add-row" style="margin-top:8px">
+            <button id="btnBulk" class="btn-gray" type="button">Adicionar todos</button>
+          </div>
+        </details>
+        <div class="add-row">
+          <button class="btn-white" type="submit">Adicionar</button>
+          <button id="btnCloseAdd" class="btn-gray" type="button">Fechar</button>
+        </div>
+      </fieldset>
+    </form>
+    <div class="row-scroll">
+      <button id="btnAdd" class="card add-card" type="button" aria-expanded="false" disabled>
+        <span class="plus" aria-hidden="true">+</span>
+        <span>Adicionar filme</span>
+      </button>
+      <div id="listMe" class="contents"></div>
+    </div>
+  </section>
+
+  <section class="rowsec" aria-label="Lista da outra pessoa">
+    <div class="row-head">
+      <span id="otherDot" class="dot"></span>
+      <h2 id="otherTitle">Lista da Gabriela</h2>
+      <span id="otherCount" class="n"></span>
+    </div>
+    <div class="row-scroll"><div id="listOther" class="contents"></div></div>
+  </section>
+
+  <details id="history" class="history">
+    <summary>Já assistidos <span id="hCount" class="count"></span></summary>
+    <div class="row-scroll"><div id="hList" class="contents"></div></div>
+  </details>
+
+  <details id="stats" class="history">
+    <summary>Nossas estatísticas</summary>
+    <div id="statsBody" class="stats"></div>
+  </details>
+  <p class="tmdb">Capas, sinopses e streamings: TMDB. Este site usa a API do TMDB, mas não é endossado nem certificado por ele. Versão v3 (26/10).</p>
+</div>
+
+<div class="dock">
+  <div class="dock-in">
+    <button id="btnDraw" class="btn-draw" type="button" disabled>Sortear filme</button>
+    <p id="count" class="count"></p>
+  </div>
+</div>
+
+<input id="coverFile" type="file" accept="image/*" hidden>
+<div id="backdrop" class="backdrop" hidden></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle" hidden>
+  <div class="grip" aria-hidden="true"></div>
+  <div id="shTags" class="card-tags"></div>
+  <h3 id="shTitle"></h3>
+  <p id="shSub" class="sheet-sub" hidden></p>
+  <p id="shInfo" class="sheet-info" hidden></p>
+  <div id="shActions" class="sheet-actions"></div>
+  <button id="shClose" class="btn-gray big" type="button">Fechar</button>
+</div>
+
+<script>
+/* ==========================================================
+   CONFIGURAÇÃO — preencha estes dois blocos (veja o passo a passo)
+   ========================================================== */
+window.METFLIX_FIREBASE = {
+  apiKey: "AIzaSyAZc86XTfTxU7dvXj5OUCJQYPBn6cbhq8Y",
+  authDomain: "metflix-301b1.firebaseapp.com",
+  projectId: "metflix-301b1",
+  storageBucket: "metflix-301b1.firebasestorage.app",
+  messagingSenderId: "844557534554",
+  appId: "1:844557534554:web:1358a01383f7d7169f5f63"
+};
+/* Chave gratuita do TMDB (themoviedb.org > Configurações > API > "API Key"). Deixe vazio para não buscar capas. */
+window.METFLIX_TMDB_KEY = "47dad4fce272754e4a3f5acb13937895";
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function () {
+  "use strict";
+  var cfg = window.METFLIX_FIREBASE || {};
+  var SEED = {"1dnon0goy9ylmpjda9sr": {"createdAt": 1792877427360, "kind": "first", "note": "HBO Max", "ownerId": "u_TijEefuhWOX6OImieTpW7g", "ownerName": "Gabriela", "title": "Harry Potter e o Prisioneiro de Azkaban", "watched": true, "watchedAt": 1792877441735}, "about-fate": {"createdAt": 1755218659000, "kind": "first", "note": "Prime Video", "ownerName": "Gabriela", "title": "About Fate", "watched": false}, "acompanhante-perfeita": {"createdAt": 1755490333000, "kind": "first", "note": "HBO Max · também está no top 5 de suspenses da Gabriela", "ownerName": "Guilherme", "title": "Acompanhante Perfeita", "watched": false}, "aftersun": {"createdAt": 1754667054000, "kind": "first", "note": "Netflix", "ownerName": "Guilherme", "title": "Aftersun", "watched": false}, "compramos-um-zoologico": {"createdAt": 1755218660000, "kind": "first", "note": "Disney+", "ownerName": "Gabriela", "title": "Compramos um Zoológico", "watched": false}, "deja-vu": {"createdAt": 1763265659000, "kind": "first", "note": "Com Denzel Washington", "ownerName": "Guilherme", "title": "Déjà Vu", "watched": true, "watchedAt": 1792876929931}, "desconhecidos": {"createdAt": 1756268021000, "kind": "first", "note": "Top 5 suspenses · Telecine", "ownerName": "Gabriela", "title": "Desconhecidos", "watched": false}, "gigante-de-ferro": {"createdAt": 1754788786000, "kind": "first", "note": "", "ownerName": "Gabriela", "title": "Gigante de Ferro", "watched": false}, "meio-gravida": {"createdAt": 1755218661000, "kind": "first", "note": "Netflix", "ownerName": "Gabriela", "title": "Meio Grávida", "watched": false}, "nao-se-preocupe-querida": {"createdAt": 1755218659000, "kind": "first", "note": "Prime Video", "ownerName": "Gabriela", "title": "Não Se Preocupe, Querida", "watched": false}, "nonnas": {"createdAt": 1755218660000, "kind": "first", "note": "Netflix", "ownerName": "Gabriela", "title": "Nonnas", "watched": false}, "notting-hill": {"createdAt": 1755218659000, "kind": "first", "note": "Prime Video", "ownerName": "Gabriela", "title": "Um Lugar Chamado Notting Hill", "watched": false}, "o-amigo-oculto": {"createdAt": 1755218660000, "kind": "first", "lastWatchedAt": 1792877554734, "note": "Disney+", "ownerName": "Gabriela", "rating": 3, "seenCount": 1, "title": "O Amigo Oculto", "watched": true, "watchedAt": 1792877554734}, "o-homem-invisivel": {"createdAt": 1756268021000, "kind": "first", "note": "Top 5 suspenses · Prime Video", "ownerName": "Gabriela", "title": "O Homem Invisível", "watched": false}, "o-lobo-atras-da-porta": {"createdAt": 1756268021000, "kind": "first", "note": "Top 5 suspenses", "ownerName": "Gabriela", "title": "O Lobo Atrás da Porta", "watched": false}, "o-maravilhoso-agora": {"createdAt": 1752859200000, "kind": "first", "note": "Gabriela já viu e recomenda", "ownerName": "Guilherme", "title": "O Maravilhoso Agora", "watched": false}, "pequenas-coisas-como-estas": {"createdAt": 1755490334000, "kind": "first", "note": "", "ownerName": "Guilherme", "title": "Pequenas Coisas como Estas", "watched": false}, "pisque-duas-vezes": {"createdAt": 1756268021000, "kind": "first", "lastWatchedAt": 1792877519023, "note": "Top 5 suspenses · Prime Video", "ownerName": "Gabriela", "rating": 5, "seenCount": 1, "title": "Pisque Duas Vezes", "watched": true, "watchedAt": 1792877519023}, "prisoners": {"createdAt": 1755490333000, "kind": "first", "note": "", "ownerName": "Guilherme", "title": "Prisoners (Os Suspeitos)", "watched": false}, "ricky-stanicky": {"createdAt": 1758578095000, "kind": "first", "note": "Prime Video · reel enviado pelo Instagram", "ownerName": "Guilherme", "title": "Ricky Stanicky", "watched": false}, "sete-dias-sem-fim": {"createdAt": 1751246875000, "kind": "first", "note": "Max", "ownerName": "Guilherme", "title": "Sete Dias sem Fim", "watched": false}, "we-live-in-time": {"createdAt": 1754761120000, "kind": "first", "note": "Prime Video", "ownerName": "Guilherme", "title": "We Live in Time", "watched": false}};
+  var configured = cfg.projectId && cfg.projectId.indexOf("COLE") < 0 && window.firebase;
+  var uid = null;
+  try { uid = localStorage.getItem("metflix_uid"); } catch (e) {}
+  if (!uid) {
+    uid = "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem("metflix_uid", uid); } catch (e) {}
+  }
+  var user = {
+    id: function () { return Promise.resolve(uid); },
+    can: function () { return Promise.resolve(true); },
+    profiles: function (ids) {
+      var o = {}; [].concat(ids).forEach(function (i) { o[i] = { id: i, name: "", color: "", isMe: i === uid, guest: false }; });
+      return Promise.resolve(o);
+    }
+  };
+  if (!configured) {
+    window.__metflixWhy = !window.firebase
+      ? "O Firebase não carregou. Verifique a internet, ou se algum bloqueador de anúncios está ativo, e recarregue."
+      : "A configuração do Firebase está vazia (COLE_AQUI). Este é o arquivo sem preenchimento; envie o index.html preenchido.";
+    window.__metflixShim = { use: function () { return Promise.resolve(null); } };
+    return;
+  }
+  var fs;
+  try {
+    firebase.initializeApp(cfg);
+    fs = firebase.firestore();
+  } catch (e) {
+    window.__metflixWhy = "Erro ao iniciar o Firebase: " + (e && e.message ? e.message : e);
+    window.__metflixShim = { use: function () { return Promise.resolve(null); } };
+    return;
+  }
+  try { fs.enablePersistence({ synchronizeTabs: true }).catch(function () {}); } catch (e) {}
+  window.__metflixShim = { use: function (n) { return Promise.resolve(n === "db" ? fs : n === "user" ? user : null); } };
+
+  /* cria os filmes iniciais uma única vez (ids fixos, então é seguro repetir) */
+  fs.collection("movies").limit(1).get({ source: "server" }).then(function (snap) {
+    if (!snap.empty) return;
+    var b = fs.batch();
+    Object.keys(SEED).forEach(function (id) { b.set(fs.doc("movies/" + id), SEED[id]); });
+    return b.commit();
+  }).catch(function (e) { console.warn("seed", e); });
+
+  /* capas, sinopse, gêneros e streamings pelo TMDB */
+  var KEY = window.METFLIX_TMDB_KEY;
+  if (!KEY) return;
+  var busy = {}, genreMap = null, DAY = 86400000;
+  function api(path, qs) {
+    return fetch("https://api.themoviedb.org/3" + path + "?api_key=" + encodeURIComponent(KEY) + "&language=pt-BR" + (qs || "")).then(function (r) {
+      if (!r.ok) throw new Error("tmdb " + r.status);
+      return r.json();
+    });
+  }
+  function clean(t) { return t.replace(/\s*\(.*?\)\s*/g, " ").trim(); }
+  async function genres() {
+    if (genreMap) return genreMap;
+    var j = await api("/genre/movie/list");
+    genreMap = {}; (j.genres || []).forEach(function (g) { genreMap[g.id] = g.name; });
+    return genreMap;
+  }
+  async function search(title) {
+    var qs = [title, clean(title)].filter(function (q, i, a) { return q && a.indexOf(q) === i; });
+    for (var i = 0; i < qs.length; i++) {
+      var j = await api("/search/movie", "&query=" + encodeURIComponent(qs[i]));
+      var hit = (j.results || []).filter(function (x) { return x.poster_path; })[0] || (j.results || [])[0];
+      if (hit) return hit;
+    }
+    return null;
+  }
+  async function providers(id) {
+    var j = await api("/movie/" + id + "/watch/providers");
+    var br = (j.results || {}).BR || {};
+    var out = [];
+    (br.flatrate || []).forEach(function (p) { if (out.indexOf(p.provider_name) < 0) out.push(p.provider_name); });
+    return out;
+  }
+  async function enrich(d) {
+    var m = d.data(), upd = {};
+    var id = m.tmdbId;
+    if (!id && (!m.metaTried || (!m.cover && !m.coverTried))) {
+      var hit = await search(m.title);
+      upd.metaTried = true; upd.coverTried = true;
+      if (hit) {
+        var gm = await genres();
+        id = hit.id; upd.tmdbId = hit.id;
+        if (!m.cover && hit.poster_path) upd.cover = "https://image.tmdb.org/t/p/w342" + hit.poster_path;
+        if (hit.release_date) upd.year = Number(String(hit.release_date).slice(0, 4));
+        if (hit.overview) upd.overview = hit.overview;
+        upd.genres = (hit.genre_ids || []).map(function (g) { return gm[g]; }).filter(Boolean);
+      }
+    }
+    if (id && (!m.providersAt || Date.now() - m.providersAt > 14 * DAY)) {
+      upd.providers = await providers(id);
+      upd.providersAt = Date.now();
+    }
+    if (Object.keys(upd).length) await d.ref.update(upd);
+  }
+  function needs(m) {
+    if (!m.tmdbId && (!m.metaTried || (!m.cover && !m.coverTried))) return true;
+    return !!m.tmdbId && (!m.providersAt || Date.now() - m.providersAt > 14 * DAY);
+  }
+  fs.collection("movies").onSnapshot(async function (snap) {
+    var todo = snap.docs.filter(function (d) { return needs(d.data()) && !busy[d.id]; });
+    for (var i = 0; i < todo.length; i++) {
+      var d = todo[i]; busy[d.id] = true;
+      try { await enrich(d); } catch (e) { console.warn("tmdb", d.id, e); }
+    }
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var state = {
+    movies: [], tonight: null, myId: null, canWrite: true, db: null, user: null,
+    meName: null, ready: false, loaded: false, scope: "all", kind: "all", genre: "all", spinning: false, profiles: {}
+  };
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function randInt(n) { var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+  function firstName(n) { return String(n).trim().split(/\s+/)[0]; }
+  function hueOf(s) { var x = 0; for (var i = 0; i < s.length; i++) { x = (x * 31 + s.charCodeAt(i)) >>> 0; } return x % 360; }
+  function reduceMotion() { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+
+  function h(tag, props) {
+    var el = document.createElement(tag);
+    var p = props || {};
+    Object.keys(p).forEach(function (k) {
+      var v = p[k];
+      if (v == null || v === false) return;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      for (var j = 0; j < kids.length; j++) {
+        var c = kids[j];
+        if (c == null || c === false) continue;
+        el.append(c.nodeType ? c : document.createTextNode(c));
+      }
+    }
+    return el;
+  }
+
+  var statusTimer;
+  function say(msg) {
+    var el = $("status");
+    el.textContent = msg;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(function () { el.textContent = ""; }, 6000);
+  }
+  function banner(msg) { var b = $("banner"); b.textContent = msg; b.hidden = !msg; }
+  function showHero() { $("hero").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "start" }); }
+
+  function canAdd() { return state.ready && !!state.myId && state.canWrite; }
+  function canWriteAny() { return state.ready && state.canWrite; }
+
+  function onWriteError(e, creating) {
+    var code = e && e.code;
+    if (code === "quota_exceeded") say("O limite de filmes salvos foi atingido. Exclua alguns para adicionar outros.");
+    else if (creating && code === "invalid_argument") {
+      state.canWrite = false;
+      say("Você só tem permissão de leitura nesta página. Peça acesso de edição para adicionar filmes.");
+      render();
+    } else say("Não foi possível salvar agora. Tente de novo em instantes.");
+  }
+
+  function fmtDate(d) {
+    var wd = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+    var mo = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+    return (wd + " " + String(d.getDate()).padStart(2, "0") + " " + mo).toUpperCase();
+  }
+
+  function otherOf(n) { return n === "Gabriela" ? "Guilherme" : "Gabriela"; }
+  function meName() { return state.meName || "Guilherme"; }
+  function names() { return { me: meName(), other: otherOf(meName()) }; }
+  function de(name) { return name === "Gabriela" ? "da Gabriela" : "do Guilherme"; }
+  function otherName() { return names().other; }
+  function nameFromProfile() {
+    var p = state.profiles[state.myId];
+    var first = p && p.name ? firstName(p.name).toLowerCase() : "";
+    if (first === "gabriela") return "Gabriela";
+    if (first === "guilherme" || first === "gui") return "Guilherme";
+    return null;
+  }
+  function isMine(m) { return m.ownerName ? m.ownerName === meName() : m.ownerId === state.myId; }
+  function ownerOf(m) { return m.ownerName || (m.ownerId === state.myId ? meName() : otherOf(meName())); }
+  function colorFor(wantMine) {
+    for (var i = 0; i < state.movies.length; i++) {
+      var m = state.movies[i];
+      if (m.ownerId && isMine(m) === wantMine) {
+        var p = state.profiles[m.ownerId];
+        if (p && p.color) return p.color;
+      }
+    }
+    return "var(--muted)";
+  }
+
+  function pool() {
+    return state.movies.filter(function (m) {
+      if (m.watched) return false;
+      if (state.scope === "me" && !isMine(m)) return false;
+      if (state.scope === "other" && isMine(m)) return false;
+      if (state.kind !== "all" && m.kind !== state.kind) return false;
+      if (state.genre !== "all" && (m.genres || []).indexOf(state.genre) < 0) return false;
+      return true;
+    });
+  }
+  function currentPick() {
+    if (!state.tonight || !state.tonight.movieId) return null;
+    var m = state.movies.find(function (x) { return x.id === state.tonight.movieId; });
+    return m && !m.watched ? m : null;
+  }
+
+  function tag(kind) {
+    return h("span", { class: "tag " + (kind === "rewatch" ? "rewatch" : "first"), text: kind === "rewatch" ? "Rever" : "1ª vez" });
+  }
+
+  /* ---------- writes ---------- */
+  async function setTonight(id, how) {
+    try {
+      await state.db.doc("state/tonight").set({ movieId: id, how: how, by: state.myId, at: Date.now() });
+    } catch (e) { onWriteError(e, false); }
+  }
+  async function clearTonight() {
+    try { await state.db.doc("state/tonight").delete(); } catch (e) { onWriteError(e, false); }
+  }
+  async function markWatched(id) {
+    try {
+      await state.db.doc("movies/" + id).update({ watched: true, watchedAt: Date.now() });
+      if (state.tonight && state.tonight.movieId === id) await state.db.doc("state/tonight").delete();
+      say("Marcado como visto.");
+    } catch (e) { onWriteError(e, false); }
+  }
+  async function unwatch(id) {
+    try { await state.db.doc("movies/" + id).update({ watched: false, watchedAt: null }); say("Filme voltou para a lista."); }
+    catch (e) { onWriteError(e, false); }
+  }
+  async function saveRating(m, rating, rewatch) {
+    var now = Date.now();
+    var upd;
+    if (!m.watched) {
+      upd = { lastWatchedAt: now, seenCount: (m.seenCount || 0) + 1, watched: !rewatch, watchedAt: rewatch ? null : now, kind: rewatch ? "rewatch" : m.kind };
+    } else {
+      upd = { watched: !rewatch, watchedAt: rewatch ? null : (m.watchedAt || now), kind: rewatch ? "rewatch" : m.kind, lastWatchedAt: m.watchedAt || m.lastWatchedAt || now };
+    }
+    if (rating !== null) upd.rating = rating;
+    try {
+      await state.db.doc("movies/" + m.id).update(upd);
+      if (!m.watched && state.tonight && state.tonight.movieId === m.id) await state.db.doc("state/tonight").delete();
+      say(rewatch ? m.title + " voltou para a lista como Rever." : "Avaliação salva: " + m.title + ".");
+    } catch (e) { onWriteError(e, false); }
+  }
+  async function removeMovie(id) {
+    try {
+      await state.db.doc("movies/" + id).delete();
+      if (state.tonight && state.tonight.movieId === id) await state.db.doc("state/tonight").delete();
+    } catch (e) { onWriteError(e, false); }
+  }
+
+  async function draw() {
+    if (state.spinning || !canWriteAny()) return;
+    var p = pool();
+    if (!p.length) { say("Nenhum filme na roda com esses filtros. Adicione filmes ou mude os filtros."); return; }
+    var cands = p;
+    if (p.length > 1 && state.tonight) {
+      cands = p.filter(function (m) { return m.id !== state.tonight.movieId; });
+      if (!cands.length) cands = p;
+    }
+    var win = cands[randInt(cands.length)];
+    state.spinning = true;
+    renderControls();
+    showHero();
+    if (!reduceMotion() && p.length > 1) {
+      var t = $("tTitle");
+      t.classList.remove("is-empty");
+      $("tMeta").replaceChildren(h("span", { text: "Sorteando…" }));
+      var delay = 55;
+      for (var i = 0; i < 18; i++) {
+        t.textContent = p[randInt(p.length)].title;
+        await sleep(delay);
+        delay *= 1.12;
+      }
+    }
+    await setTonight(win.id, "sorteio");
+    state.spinning = false;
+    render();
+    say("Sorteado: " + win.title);
+  }
+
+  /* ---------- bottom sheet ---------- */
+  var lastFocus = null;
+  function closeSheet() {
+    $("sheet").hidden = true;
+    $("backdrop").hidden = true;
+    if (lastFocus && lastFocus.isConnected) { try { lastFocus.focus(); } catch (e) { /* ignore */ } }
+    lastFocus = null;
+  }
+  function starsText(r) { return "★".repeat(r) + "☆".repeat(5 - r); }
+  function hasRating(m) { return typeof m.rating === "number"; }
+  function ratingLabel(m) { return hasRating(m) ? starsText(m.rating) + " (" + m.rating + " de 5)" : "Sem avaliação"; }
+  function ratingTag(m) {
+    var cls = !hasRating(m) ? "v-none" : m.rating >= 4 ? "v-liked" : m.rating <= 2 ? "v-disliked" : "";
+    return h("span", { class: "tag rt " + cls, text: hasRating(m) ? starsText(m.rating) : "Sem nota" });
+  }
+  function sheetBtn(label, cls, fn) {
+    return h("button", { class: cls + " big", type: "button", disabled: !canWriteAny(), text: label, onclick: fn });
+  }
+  function showSheet(acts) {
+    $("shActions").replaceChildren.apply($("shActions"), acts);
+    $("backdrop").hidden = false;
+    $("sheet").hidden = false;
+    var first = $("shActions").querySelector("button:not([disabled])");
+    (first || $("shClose")).focus();
+  }
+  function openRating(m) {
+    if ($("sheet").hidden) lastFocus = document.activeElement;
+    var rating = hasRating(m) ? m.rating : null;
+    var rewatch = rating !== null ? rating >= 4 : false;
+    var touched = false;
+    $("shTags").replaceChildren(tag(m.kind));
+    $("shTitle").textContent = m.title;
+    $("shSub").textContent = "Como foi assistir juntos? Escolha de 0 a 5 estrelas.";
+    $("shSub").hidden = false;
+    $("shInfo").hidden = true;
+
+    var starBtns = [];
+    for (var v = 0; v <= 5; v++) {
+      (function (val) {
+        var b = h("button", { class: "star" + (val === 0 ? " zero" : ""), type: "button", "data-v": String(val),
+          "aria-label": val === 0 ? "Zero estrelas" : val + (val === 1 ? " estrela" : " estrelas"),
+          disabled: !canWriteAny(), text: val === 0 ? "0" : "★",
+          onclick: function () { rating = val; if (!touched) rewatch = val >= 4; refresh(); } });
+        starBtns.push(b);
+      })(v);
+    }
+    var hint = h("p", { class: "sheet-sub" });
+    var rewBtn = h("button", { class: "btn-gray big", type: "button", disabled: !canWriteAny(),
+      onclick: function () { rewatch = !rewatch; touched = true; refresh(); } });
+    var saveBtn = sheetBtn("Salvar avaliação", "btn-white", function () { closeSheet(); saveRating(m, rating, rewatch); });
+    var laterBtn = m.watched ? null : sheetBtn("Avaliar depois", "btn-gray", function () {
+      closeSheet(); saveRating(m, null, false);
+    });
+    function refresh() {
+      starBtns.forEach(function (b) {
+        var val = Number(b.dataset.v);
+        var on = rating !== null && (val === 0 ? rating === 0 : val >= 1 && val <= rating);
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(rating === val));
+      });
+      saveBtn.disabled = rating === null || !canWriteAny();
+      rewBtn.hidden = rating === null;
+      rewBtn.textContent = "Ver de novo depois: " + (rewatch ? "sim" : "não");
+      hint.textContent = rating === null ? "Escolha uma nota para salvar."
+        : rewatch ? "O filme volta para a lista como Rever." : "O filme fica em Já assistidos.";
+    }
+    refresh();
+    $("shActions").replaceChildren.apply($("shActions"), [h("div", { class: "stars", role: "group", "aria-label": "Nota de 0 a 5" }, starBtns), hint, rewBtn, saveBtn, laterBtn]);
+    $("backdrop").hidden = false;
+    $("sheet").hidden = false;
+    var firstStar = starBtns[rating !== null && rating > 0 ? rating : 5];
+    (firstStar && !firstStar.disabled ? firstStar : $("shClose")).focus();
+  }
+  function fillInfo(m) {
+    var box = $("shInfo");
+    var parts = [];
+    var head = [];
+    if (m.year) head.push(String(m.year));
+    if (m.genres && m.genres.length) head.push(m.genres.slice(0, 3).join(", "));
+    if (head.length) parts.push(h("b", { text: head.join(" · ") }));
+    if (m.overview) parts.push(h("span", { text: (parts.length ? " " : "") + m.overview }));
+    if (m.providers && m.providers.length) parts.push(h("br"), h("span", { text: "Onde assistir no Brasil: " }), h("b", { text: m.providers.join(", ") }));
+    else if (m.providersAt) parts.push(h("br"), h("span", { text: "Não está em nenhum streaming por assinatura no Brasil." }));
+    box.replaceChildren.apply(box, parts);
+    box.hidden = !parts.length;
+  }
+  function openSheet(m, opts) {
+    lastFocus = document.activeElement;
+    var isPick = !opts.watched && state.tonight && state.tonight.movieId === m.id;
+    var mine = isMine(m);
+    var sub = [];
+    if (opts.watched && m.watchedAt) sub.push("Visto em " + new Date(m.watchedAt).toLocaleDateString("pt-BR"));
+    if (opts.watched) sub.push(ratingLabel(m));
+    if (!opts.watched && m.lastWatchedAt) sub.push("Já vimos em " + new Date(m.lastWatchedAt).toLocaleDateString("pt-BR") + (hasRating(m) ? " · " + starsText(m.rating) : ""));
+    if (m.note) sub.push(m.note);
+    sub.push("Lista " + de(ownerOf(m)));
+    $("shTags").replaceChildren(tag(m.kind), isPick ? h("span", { class: "tag live", text: "Em cartaz" }) : null);
+    $("shTitle").textContent = m.title;
+    $("shSub").textContent = sub.join(" · ");
+    $("shSub").hidden = false;
+    fillInfo(m);
+
+    function act(label, cls, fn) {
+      return h("button", { class: cls + " big", type: "button", disabled: !canWriteAny(), text: label, onclick: fn });
+    }
+    var acts = [];
+    if (opts.watched) {
+      acts.push(act(hasRating(m) ? "Mudar avaliação" : "Avaliar", "btn-white", function () { openRating(m); }));
+      acts.push(act("Voltar para a lista", "btn-gray", function () { closeSheet(); unwatch(m.id); }));
+    } else {
+      if (!isPick) acts.push(act("Escolher para hoje", "btn-white", function () {
+        if (state.spinning) return;
+        closeSheet();
+        setTonight(m.id, "escolha").then(showHero);
+      }));
+      acts.push(act("Já assistimos", "btn-gray", function () { openRating(m); }));
+      if (mine) acts.push(act("Excluir da lista", "btn-gray danger", function (ev) {
+        var b = ev.currentTarget;
+        if (b.dataset.armed) { closeSheet(); removeMovie(m.id); return; }
+        b.dataset.armed = "1";
+        b.textContent = "Toque de novo para excluir";
+      }));
+    }
+    var delIdx = -1;
+    acts.forEach(function (a, i) { if (a.classList && a.classList.contains("danger")) delIdx = i; });
+    var ca = coverActs(m, act);
+    if (delIdx >= 0) acts.splice.apply(acts, [delIdx, 0].concat(ca)); else acts = acts.concat(ca);
+    $("shActions").replaceChildren.apply($("shActions"), acts);
+    $("backdrop").hidden = false;
+    $("sheet").hidden = false;
+    var first = $("shActions").querySelector("button");
+    (first || $("shClose")).focus();
+  }
+
+  /* ---------- rendering ---------- */
+  function renderTicket() {
+    if (state.spinning) return;
+    var m = currentPick();
+    var t = $("tTitle"), meta = $("tMeta");
+    t.classList.toggle("is-empty", !m);
+    t.textContent = m ? m.title : "Nada em cartaz";
+    var bg = $("heroBg");
+    if (m && m.cover && /^(data:image\/|https:\/\/)/.test(m.cover)) {
+      bg.style.backgroundImage = "url(\"" + m.cover + "\")";
+      bg.hidden = false;
+    } else { bg.hidden = true; bg.style.backgroundImage = ""; }
+    if (!m) {
+      meta.replaceChildren(h("span", { text: "Sorteie um filme ou escolha um da lista." }));
+    } else {
+      var how = state.tonight && state.tonight.how === "sorteio" ? "sorteado" : "escolhido";
+      meta.replaceChildren(
+        tag(m.kind),
+        m.year ? h("span", { text: String(m.year) }) : null,
+        m.note ? h("span", { text: m.note }) : null,
+        h("span", { text: "na lista " + de(ownerOf(m)) + " · " + how })
+      );
+    }
+    $("btnWatched").hidden = !m;
+    $("btnClear").hidden = !m;
+    $("btnWatched").disabled = !canWriteAny();
+    $("btnClear").disabled = !canWriteAny();
+  }
+
+  function renderGenres() {
+    var counts = {};
+    state.movies.forEach(function (m) {
+      if (m.watched) return;
+      (m.genres || []).forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
+    });
+    var list = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, "pt-BR"); });
+    if (state.genre !== "all" && list.indexOf(state.genre) < 0) state.genre = "all";
+    $("genreBox").hidden = !list.length;
+    var sig = list.join("|") + "#" + state.genre;
+    var box = $("genrePills");
+    if (box.dataset.sig !== sig) {
+      box.dataset.sig = sig;
+      var btns = ["all"].concat(list).map(function (g) {
+        return h("button", { class: "seg-btn", type: "button", "data-key": "genre", "data-val": g,
+          "aria-pressed": String(state.genre === g), text: g === "all" ? "Todos" : g,
+          onclick: function () { state.genre = g; renderControls(); } });
+      });
+      box.replaceChildren.apply(box, btns);
+    }
+    box.querySelectorAll(".seg-btn").forEach(function (b) { b.setAttribute("aria-pressed", String(state.genre === b.dataset.val)); });
+  }
+
+  function renderControls() {
+    document.querySelectorAll(".seg-btn").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(state[b.dataset.key] === b.dataset.val));
+    });
+    $("lblOther").textContent = names().other;
+    $("lblMe").textContent = names().me;
+    renderGenres();
+    var n = pool().length;
+    $("count").textContent = n + " na roda";
+    $("btnDraw").disabled = state.spinning || !canWriteAny();
+    $("btnDraw").textContent = state.spinning ? "Sorteando…" : "Sortear filme";
+  }
+
+  var coverTarget = null;
+  function resizeToDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var W = 260, H = 390, r = img.width / img.height, tr = W / H;
+        var sw = img.width, sh = img.height, sx = 0, sy = 0;
+        if (r > tr) { sw = img.height * tr; sx = (img.width - sw) / 2; } else { sh = img.width / tr; sy = (img.height - sh) / 2; }
+        var c = document.createElement("canvas"); c.width = W; c.height = H;
+        c.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.78));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("img")); };
+      img.src = url;
+    });
+  }
+  async function setCover(m, dataUrl) {
+    try {
+      await state.db.doc("movies/" + m.id).update({ cover: dataUrl });
+      say(dataUrl ? "Capa salva: " + m.title + "." : "Capa removida.");
+    } catch (e) { onWriteError(e, false); }
+  }
+  $("coverFile").addEventListener("change", function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    var m = coverTarget;
+    ev.target.value = "";
+    if (!f || !m) return;
+    resizeToDataUrl(f).then(function (d) { return setCover(m, d); }).catch(function () { say("Não consegui ler essa imagem."); });
+  });
+  function coverActs(m, act) {
+    var out = [];
+    out.push(act(m.cover ? "Trocar capa" : "Adicionar capa", "btn-gray", function () {
+      coverTarget = m; closeSheet(); $("coverFile").click();
+    }));
+    out.push(h("a", { class: "btn-gray big", href: "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(m.title + " filme pôster"), target: "_blank", rel: "noopener", text: "Buscar capa na internet" }));
+    if (m.cover) out.push(act("Remover capa", "btn-gray danger", function () { closeSheet(); setCover(m, null); }));
+    return out;
+  }
+
+  function card(m, opts) {
+    var isPick = !opts.watched && state.tonight && state.tonight.movieId === m.id;
+    var sub = [];
+    if (opts.watched && m.watchedAt) sub.push("visto em " + new Date(m.watchedAt).toLocaleDateString("pt-BR"));
+    if (!opts.watched && m.lastWatchedAt) sub.push("já vimos em " + new Date(m.lastWatchedAt).toLocaleDateString("pt-BR") + (hasRating(m) ? " · " + starsText(m.rating) : ""));
+    if (m.note) sub.push(m.note);
+    if (opts.showOwner) sub.push("de " + ownerOf(m));
+    var open = function () { openSheet(m, opts); };
+    var el = h("div", {
+      class: "card" + (isPick ? " is-pick" : "") + (opts.watched ? " is-watched" : ""),
+      role: "button", tabindex: "0", "aria-label": m.title,
+      onclick: open,
+      onkeydown: function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(); } }
+    },
+      h("div", { class: "card-tags" }, tag(m.kind), opts.watched ? ratingTag(m) : null, isPick ? h("span", { class: "tag live", text: "Em cartaz" }) : null),
+      h("p", { class: "card-title", text: m.title }),
+      sub.length ? h("div", { class: "card-note", text: sub.join(" · ") }) : null);
+    el.style.setProperty("--h", String(hueOf(m.title)));
+    if (m.cover && /^(data:image\/|https:\/\/)/.test(m.cover)) {
+      el.classList.add("has-cover");
+      el.style.backgroundImage = "url(\"" + m.cover + "\")";
+    }
+    return el;
+  }
+
+  function fillRow(box, items, emptyMsg, opts) {
+    var rows = items.length ? items.map(function (m) { return card(m, opts); })
+      : [h("div", { class: "empty", text: state.loaded ? emptyMsg : "Carregando…" })];
+    box.replaceChildren.apply(box, rows);
+  }
+
+  function renderLists() {
+    var pending = state.movies.filter(function (m) { return !m.watched; })
+      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var mine = pending.filter(isMine);
+    var others = pending.filter(function (m) { return !isMine(m); });
+    var on = otherName();
+
+    $("meCount").textContent = mine.length;
+    $("otherCount").textContent = others.length;
+    $("meTitle").textContent = "Lista " + de(names().me);
+    $("otherTitle").textContent = "Lista " + de(on);
+    $("meDot").style.background = colorFor(true);
+    $("otherDot").style.background = colorFor(false);
+
+    fillRow($("listMe"), mine, "Sua lista está vazia. Use o primeiro cartão para adicionar um filme.", { showOwner: false });
+    fillRow($("listOther"), others, "Ainda não há filmes aqui. Quando " + on + " abrir esta página e adicionar os dela, a lista aparece neste lugar.", { showOwner: false });
+
+    var watched = state.movies.filter(function (m) { return m.watched; })
+      .sort(function (a, b) { return (b.watchedAt || 0) - (a.watchedAt || 0); });
+    $("hCount").textContent = watched.length ? "(" + watched.length + ")" : "";
+    fillRow($("hList"), watched, "Os filmes marcados como vistos aparecem aqui.", { watched: true, showOwner: true });
+    $("whoBox").hidden = !(state.ready && state.myId && !state.meName);
+  }
+
+  function renderStats() {
+    var body = $("statsBody");
+    var seen = state.movies.filter(function (m) { return m.watched || m.lastWatchedAt; });
+    var rated = state.movies.filter(hasRating);
+    var avg = rated.length ? rated.reduce(function (a, m) { return a + m.rating; }, 0) / rated.length : null;
+    var sessions = state.movies.reduce(function (a, m) { return a + (m.seenCount || (m.watched ? 1 : 0)); }, 0);
+    var pending = state.movies.filter(function (m) { return !m.watched; }).length;
+    function tile(n, label) { return h("div", { class: "stat" }, h("b", { text: n }), h("span", { text: label })); }
+    var tiles = h("div", { class: "stat-tiles" },
+      tile(String(seen.length), "filmes já vistos juntos"),
+      tile(String(pending), "esperando na lista"),
+      tile(avg === null ? "–" : avg.toFixed(1).replace(".", ","), "nota média de 5"),
+      tile(String(sessions), "sessões de cinema"));
+    var kids = [tiles];
+    var who = [names().me, names().other].map(function (nm) {
+      var mine = state.movies.filter(function (m) { return ownerOf(m) === nm; });
+      var r = mine.filter(hasRating);
+      var a = r.length ? (r.reduce(function (x, m) { return x + m.rating; }, 0) / r.length).toFixed(1).replace(".", ",") + " de média" : "sem notas ainda";
+      return h("li", {}, h("span", { text: nm + ": " + mine.length + (mine.length === 1 ? " filme sugerido" : " filmes sugeridos") }), h("span", { class: "st", text: a }));
+    });
+    kids.push(h("ul", { class: "stat-list" }, who));
+    var top = rated.slice().sort(function (a, b) { return b.rating - a.rating || (b.lastWatchedAt || b.watchedAt || 0) - (a.lastWatchedAt || a.watchedAt || 0); }).slice(0, 3);
+    if (top.length) kids.push(h("ul", { class: "stat-list" }, top.map(function (m) {
+      return h("li", {}, h("span", { text: m.title }), h("span", { class: "st", text: starsText(m.rating) }));
+    })));
+    var gc = {};
+    seen.forEach(function (m) { (m.genres || []).forEach(function (g) { gc[g] = (gc[g] || 0) + 1; }); });
+    var gk = Object.keys(gc).sort(function (a, b) { return gc[b] - gc[a]; });
+    if (gk.length) kids.push(h("p", { class: "stat-sub", text: "Gênero que mais vimos: " + gk[0] + " (" + gc[gk[0]] + ")" }));
+    if (!seen.length) kids.push(h("p", { class: "stat-sub", text: "Quando vocês marcarem o primeiro filme como assistido, as estatísticas aparecem aqui." }));
+    body.replaceChildren.apply(body, kids);
+  }
+
+  function renderForm() {
+    $("addSet").disabled = !canAdd();
+    $("btnAdd").disabled = !canAdd();
+    var hint = $("formHint");
+    var msg = "";
+    if (state.ready && !state.myId) msg = "Entre na sua conta para adicionar filmes.";
+    else if (state.ready && !state.canWrite) msg = "Você só tem permissão de leitura nesta página. Peça acesso de edição para adicionar filmes.";
+    hint.textContent = msg;
+    hint.hidden = !msg;
+  }
+
+  function withTimeout(p, ms, fallback) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var t = setTimeout(function () { if (!done) { done = true; resolve(fallback); } }, ms);
+      Promise.resolve(p).then(
+        function (v) { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+        function () { if (!done) { done = true; clearTimeout(t); resolve(fallback); } });
+    });
+  }
+  var profKey = "";
+  function paint() {
+    try { renderTicket(); } catch (e) { console.error(e); }
+    try { renderControls(); } catch (e) { console.error(e); }
+    try { renderLists(); } catch (e) { console.error(e); }
+    try { renderForm(); } catch (e) { console.error(e); }
+    try { renderStats(); } catch (e) { console.error(e); }
+  }
+  function refreshProfiles() {
+    if (!state.user) return;
+    var ids = [];
+    state.movies.forEach(function (m) { if (m.ownerId && ids.indexOf(m.ownerId) < 0) ids.push(m.ownerId); });
+    if (state.myId && ids.indexOf(state.myId) < 0) ids.push(state.myId);
+    var key = ids.slice().sort().join(",");
+    if (!ids.length || key === profKey) return;
+    profKey = key;
+    withTimeout(state.user.profiles(ids), 4000, null).then(function (p) { if (p) { state.profiles = p; paint(); } });
+  }
+  function render() { paint(); refreshProfiles(); }
+
+  /* ---------- events ---------- */
+  document.querySelectorAll(".seg-btn").forEach(function (b) {
+    b.addEventListener("click", function () { state[b.dataset.key] = b.dataset.val; renderControls(); });
+  });
+  $("btnDraw").addEventListener("click", draw);
+  $("btnWatched").addEventListener("click", function () { var m = currentPick(); if (m) openRating(m); });
+  $("btnClear").addEventListener("click", clearTonight);
+  $("backdrop").addEventListener("click", closeSheet);
+  $("shClose").addEventListener("click", closeSheet);
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+
+  document.querySelectorAll("[data-who]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      state.meName = b.dataset.who;
+      render();
+      try { await state.db.doc("data/users/" + state.myId + "/profile").set({ name: state.meName }); } catch (e) { /* kept in memory only */ }
+    });
+  });
+
+  function setAddOpen(open) {
+    $("addForm").hidden = !open;
+    $("btnAdd").setAttribute("aria-expanded", String(open));
+    if (open) $("fTitle").focus(); else $("btnAdd").focus();
+  }
+  $("btnAdd").addEventListener("click", function () { setAddOpen($("addForm").hidden); });
+  $("btnCloseAdd").addEventListener("click", function () { setAddOpen(false); });
+
+  var adding = false;
+  $("addForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    if (adding || !canAdd()) return;
+    var title = $("fTitle").value.trim().replace(/\s+/g, " ");
+    if (!title) { $("fTitle").focus(); return; }
+    var dup = state.movies.some(function (m) { return !m.watched && isMine(m) && m.title.toLowerCase() === title.toLowerCase(); });
+    if (dup) { say("Esse filme já está na sua lista."); return; }
+    var kind = document.querySelector('input[name="kind"]:checked').value;
+    adding = true;
+    try {
+      await state.db.collection("movies").add({
+        title: title, kind: kind, note: $("fNote").value.trim(), ownerId: state.myId, ownerName: meName(),
+        watched: false, createdAt: Date.now()
+      });
+      $("fTitle").value = ""; $("fNote").value = "";
+      $("fTitle").focus();
+      say("Adicionado: " + title);
+    } catch (e) { onWriteError(e, true); }
+    adding = false;
+  });
+
+  $("btnBulk").addEventListener("click", async function () {
+    if (adding || !canAdd()) return;
+    var lines = $("fBulk").value.split(/\r?\n/).map(function (x) { return x.trim().replace(/\s+/g, " "); }).filter(Boolean);
+    if (!lines.length) { $("fBulk").focus(); return; }
+    var kind = document.querySelector('input[name="kind"]:checked').value;
+    var seenT = {};
+    state.movies.forEach(function (m) { if (!m.watched && isMine(m)) seenT[m.title.toLowerCase()] = 1; });
+    var todo = lines.filter(function (t) { var k = t.toLowerCase(); if (seenT[k]) return false; seenT[k] = 1; return true; }).slice(0, 60);
+    var skipped = lines.length - todo.length;
+    if (!todo.length) { say("Todos esses filmes já estão na sua lista."); return; }
+    adding = true;
+    $("btnBulk").disabled = true;
+    var ok = 0;
+    try {
+      for (var i = 0; i < todo.length; i++) {
+        await state.db.collection("movies").add({
+          title: todo[i].slice(0, 120), kind: kind, note: "", ownerId: state.myId, ownerName: meName(),
+          watched: false, createdAt: Date.now() + i
+        });
+        ok++;
+      }
+      $("fBulk").value = "";
+      say(ok + (ok === 1 ? " filme adicionado." : " filmes adicionados.") + (skipped ? " " + skipped + " já estavam na lista ou se repetiam." : ""));
+    } catch (e) { onWriteError(e, true); }
+    adding = false;
+    $("btnBulk").disabled = false;
+  });
+
+  /* ---------- start ---------- */
+  $("tDate").textContent = fmtDate(new Date());
+  render();
+
+  (async function init() {
+    var cl = window.__metflixShim || window.claude;
+    if (!cl || !cl.use) { banner("" + (window.__metflixWhy || "Não foi possível conectar ao banco de dados.") + ""); return; }
+    var db = null, user = null;
+    try { db = await cl.use("db"); } catch (e) { db = null; }
+    try { user = await cl.use("user"); } catch (e) { user = null; }
+    state.db = db; state.user = user;
+    if (!db) {
+      banner("" + (window.__metflixWhy || "Não foi possível conectar ao banco de dados.") + "");
+      state.loaded = true;
+      render();
+      return;
+    }
+    state.ready = true;
+    function dbErr() { banner("A conexão com as listas foi encerrada. Recarregue a página."); }
+    db.collection("movies").onSnapshot(function (snap) {
+      state.movies = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); })
+        .filter(function (m) { return typeof m.title === "string"; });
+      state.loaded = true;
+      render();
+    }, dbErr);
+    db.doc("state/tonight").onSnapshot(function (s) {
+      state.tonight = s.exists ? s.data() : null;
+      render();
+    }, dbErr);
+    render();
+
+    var uid = null, who = null;
+    if (user) {
+      uid = await withTimeout(user.id(), 4000, null);
+      var cw = await withTimeout(user.can("data.write"), 4000, null);
+      state.canWrite = cw !== false;
+    }
+    if (uid) {
+      var pd = await withTimeout(db.doc("data/users/" + uid + "/profile").get(), 4000, null);
+      if (pd && pd.exists) {
+        var pn = pd.data() && pd.data().name;
+        if (pn === "Gabriela" || pn === "Guilherme") who = pn;
+      }
+      if (!who) {
+        var pr = await withTimeout(user.profiles([uid]), 4000, null);
+        if (pr) {
+          state.profiles = pr;
+          var p0 = pr[uid];
+          var f0 = p0 && p0.name ? firstName(p0.name).toLowerCase() : "";
+          if (f0 === "gabriela") who = "Gabriela";
+          else if (f0 === "guilherme" || f0 === "gui") who = "Guilherme";
+        }
+      }
+    }
+    state.myId = uid;
+    state.meName = who;
+    render();
+  })();
+})();
+</script>
